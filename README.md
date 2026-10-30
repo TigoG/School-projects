@@ -1,25 +1,23 @@
-# School projects
+# Schoolprojecten
 
-An overview of the projects in this folder. Each project lives in its own directory; the descriptions are based on the code and documentation currently included.
+Een kort overzicht van alle projecten in deze map. De beschrijvingen zijn gebaseerd op de bijbehorende code en documentatie.
 
-## HBO projects
+## HBO-projecten
 
-- **Central Server** (`centralServer-main`) — A desktop web dashboard for weather stations, with MQTT-related components, sensor views, and history. This is connected to **Minor Smart Things** below.
-- **Kickstarter Minor** (`kickstarter-minor-master`) — A React and TypeScript dashboard prototype for monitoring people/devices, with login, device cards, charts, logs, and an alarm interface.
-- **Lift** (`Lift-main`) — Arduino lift/elevator prototype code. It reads floor sensor inputs, displays the selected floor, and includes separate I²C master/slave experiments.
-- **Minor Smart Things** (`Minor_Smart_Things-main`) — Embedded projects for a motorized shade actuator and a weather station that reads sensors, displays measurements, and communicates wirelessly. It works together with the Central Server project.
-- **Automating Sailing Race Signals** (`Project_78-Automatisering-seinen-bij-zeilwedstrijden-main`) — A sailing-race signaling system using Arduino/ESP32 hardware and an e-paper display, with a dashboard prototype and battery-monitoring code.
-- **Year 3 Internship** (`StageJaar3-main`) — Internship prototype for a consent-management web application, split into a Flutter mobile app, a React web app, and a plugin/integration component.
-- **TI Project 3–4** (`TI-PROJECT3-4-main`) — Java, Arduino, and Node.js experiments and project code, including serial communication, keypad/display input, database access, and a bank API example.
-- **Connected Systems (TINCOS01)** (`TINCOS01-main`) — A multi-robot system combining Webots simulation, physical robot controllers, an MQTT central server, and a dashboard for assigning tasks and tracking robot status.
-- **Project 56: SCR Sensor Analysis** (`TINPRJ0456-main`) — A system for measuring SCR exhaust sensor data, showing and storing readings, and managing measurement setups for later analysis. The repository includes a Java backend, frontend, and hardware/deployment files.
-- **Autonomous TORCS Driver** (`TORCS-main`) — A machine-learning racing bot for the TORCS simulator, with Python client/training code and a bundled TORCS server environment.
+In de volgorde waarin ik ze heb gedaan:
 
-## University projects before HBO
+1. **Lift** (`Lift-main`) — Arduino-prototype van een lift. Het leest verdiepingssensoren uit, toont de gekozen verdieping en bevat aparte experimenten met een I²C-master en -slave.
+2. **Project 3–4** (`TI-PROJECT3-4-main`) — Projectcode en experimenten met Java, Arduino en Node.js, waaronder seriële communicatie, invoer via een toetsenpaneel en scherm, databasekoppelingen en een voorbeeld met een bank-API.
+3. **Project 5–6: SCR-sensoranalyse** (`TINPRJ0456-main`) — Een systeem om sensorgegevens van een SCR-installatie te meten, weer te geven en op te slaan voor latere analyse. De map bevat onder meer een Java-server, een gebruikersinterface en bestanden voor de hardware en installatie.
+4. **Project 7–8: Seinen bij zeilwedstrijden automatiseren** (`Project_78-Automatisering-seinen-bij-zeilwedstrijden-main`) — Een systeem voor zeilwedstrijdseinen met Arduino/ESP32-hardware en een elektronisch-papieren scherm, plus een proefversie van een bedieningspaneel en code voor batterijbewaking.
+5. **Verbonden systemen (TINCOS01)** (`TINCOS01-main`) — Een systeem met meerdere robots, bestaande uit een Webots-simulatie, robotbesturing, een centrale MQTT-server en een bedieningspaneel voor taken en robotstatus.
+6. **Stage jaar 3** (`StageJaar3-main`) — Proefversie van een webtoepassing voor toestemmingsbeheer, met een Flutter-app, een React-webtoepassing en een invoegtoepassing voor de koppeling.
+7. **Zelfrijdende TORCS-raceauto** (`TORCS-main`) — Een raceprogramma dat zelfstandig rijdt in de TORCS-simulator, met Python-code voor de simulatorverbinding en het model, plus een meegeleverde TORCS-serveromgeving.
+8. **Minor Smart Things** (`Minor_Smart_Things-main`) — Projecten met ingebouwde elektronica voor een zonweringmotor en een weerstation dat sensoren uitleest, metingen toont en draadloos communiceert. Dit project, Central Server en Kickstarter Minor hoorden alle drie bij hetzelfde vak.
+9. **Centrale server** (`centralServer-main`) — Een bedieningspaneel voor weerstations met MQTT-onderdelen, sensorschermen en meetgeschiedenis. Dit is het dashboarddeel van het Minor Smart Things-systeem.
+10. **Kickstarter Minor** (`kickstarter-minor-master`) — Een bedieningspaneel in React en TypeScript met inloggen, apparaatoverzichten, grafieken, logboeken en een alarmfunctie. Dit hoorde bij hetzelfde vak als Minor Smart Things en Central Server.
 
-- **Tetris** (`Tetris-master`) — A C# Tetris game built with MonoGame, including its own grid, piece, input, and game-world logic.
-- **TickTick** (`TickTick-master`) — A C# 2D game built on a reusable game engine, with menus, level selection, gameplay states, and level objects.
+## Universiteit voor het hbo
 
-## Connected projects
-
-`centralServer-main` and `Minor_Smart_Things-main` are parts of the same connected weather-station system: the latter contains the station/embedded projects, while the former contains the central dashboard.
+- **Tetris** (`Tetris-master`) — Een Tetris-spel in C# en MonoGame, met eigen logica voor het speelveld, de blokken, bediening en spelwereld.
+- **TickTick** (`TickTick-master`) — Een tweedimensionaal spel in C# op basis van een herbruikbare spelomgeving, met menu's, levelkeuze, spelstanden en spelelementen.
