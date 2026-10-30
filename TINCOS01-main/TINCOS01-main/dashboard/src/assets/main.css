@@ -1,0 +1,95 @@
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+    margin: 1.5em;
+    font-size: 1.2em;
+}
+
+canvas {
+    border: 10px solid black;
+}
+
+.legend {
+    display: flex;
+    gap: 1em;
+}
+
+.legend-item {
+    display: flex;
+    align-items: center;
+}
+
+.legend-color {
+    width: 20px;
+    height: 20px;
+    margin-right: 5px;
+    border: 2px solid black;
+}
+
+p {
+    margin: 0;
+}
+
+.robot-status {
+    font-size: 0.6em;
+    line-height: 0.5;
+}
+
+.dashboard {
+    font-size: 1.2em;
+    display: flex;
+    gap: 3em;
+    justify-content: center;
+    align-items: center;
+}
+
+.panel {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-direction: column;
+    gap: 1em;
+}
+
+button, input {
+    font-size: 1em;
+    border-radius: 0.5em;
+}
+
+button {
+    border: none;
+    cursor: pointer;
+    transition: background-color 0.1s;
+    padding: 0.5em 1em;
+}
+
+.controls {
+    display: flex;
+    flex-direction: column;
+    gap: 1em;
+    max-width: 13em;
+}
+
+button#stop {
+    background-color: #af1212;
+    color: white;
+}
+
+button#stop:hover {
+    background-color: #980a0a;
+}
+
+button#stop:active {
+    background-color: #850505;
+}
+
+input {
+    width: 2em;
+    border: none;
+    margin: 0 .2em;
+    text-align: center;
+    font-size: 1.2em;
+}
+
+.coords span {
+    font-size: 2em;
+}

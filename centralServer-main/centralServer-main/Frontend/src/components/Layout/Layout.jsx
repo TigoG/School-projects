@@ -1,0 +1,640 @@
+import React, { useState, useEffect } from "react";
+import "./Layout.css";
+import Controls from "../Controls/Controls.jsx";
+import WeatherMap, { generateSensors } from "../WeatherMap/WeatherMap.jsx";
+import WeatherCard from "../WeatherCard/WeatherCard.jsx";
+import SearchBar from "../SearchBar/SearchBar.jsx";
+import Model from "../Model/Model.jsx";
+import { STUDENT_NUMBER, NL_CENTER } from "../../config/constants";
+import MQTTModule from "../MQTTModule/MQTTModule.jsx";
+import { GetStations } from "../BackendConnection/BackendConnection.jsx";
+import { publishStationUpdate } from "../../utils/sensorBus";
+
+export default function Layout() {
+  const [stations, setStations] = useState([]);
+  const [focusId, setFocusId] = useState(null);
+  const [showSearch, setShowSearch] = useState(false);
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [showUpdateModal, setShowUpdateModal] = useState(false);
+  const [addForm, setAddForm] = useState({
+    id: STUDENT_NUMBER,
+    student_number: "",
+    latitude: String(NL_CENTER[0]),
+    longitude: String(NL_CENTER[1]),
+    location: "1",
+  });
+  const [updateForm, setUpdateForm] = useState({
+    student_number: "",
+    latitude: String(NL_CENTER[0]),
+    longitude: String(NL_CENTER[1]),
+  });
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchError, setSearchError] = useState(null);
+  const [updateError, setUpdateError] = useState(null);
+  const [updateSuccess, setUpdateSuccess] = useState(null);
+  const [isUpdating, setIsUpdating] = useState(false);
+  const [tick, setTick] = useState(Date.now());
+  // MQTT client instance (set by MQTTModule via onClient)
+  const [mqttClient, setMqttClient] = useState(null);
+
+  // Normalize various location representations to numeric 0 (inside) or 1 (outside).
+  // Accepts numbers, "0"/"1", "binnen"/"buiten", "inside"/"outside", and fuzzy matches.
+  const normalizeLocation = (v) => {
+    if (v === null || typeof v === "undefined") return 1;
+    if (typeof v === "number" && !Number.isNaN(v)) return Number(v);
+    const s = String(v).trim().toLowerCase();
+    if (s === "") return 1;
+    // explicit numeric strings
+    if (s === "0") return 0;
+    if (s === "1") return 1;
+    // common localized keywords
+    if (s === "binnen" || s === "inside" || s.includes("bin")) return 0;
+    if (s === "buiten" || s === "outside" || s.includes("buit")) return 1;
+    const n = Number(s);
+    return Number.isFinite(n) ? n : 1;
+  };
+
+  function addStation() {
+    const id = (addForm.id || "").trim();
+    const student_number =
+      (addForm.student_number || "").trim() || `Station ${id}`;
+    const latitude = Number(addForm.latitude);
+    const longitude = Number(addForm.longitude);
+    const location = Number(addForm.location) === 0 ? 0 : 1;
+
+    if (!id) {
+      setSearchError("ID is required");
+      return;
+    }
+    if (Number.isNaN(latitude) || Number.isNaN(longitude)) {
+      setSearchError("Latitude and longitude must be numbers");
+      return;
+    }
+    if (stations.some((s) => s.id === id)) {
+      setSearchError("Station ID already exists");
+      return;
+    }
+
+    // normalize to frontend shape expected by WeatherMap and WeatherCard
+    const newStationMeta = {
+      id,
+      student_number,
+      name: student_number,
+      lat: latitude,
+      lon: longitude,
+      location,
+    };
+
+    // Generate initial sensors but keep sensors in separate mapping so map doesn't re-render
+    const initialSensors = generateSensors();
+
+    setStations((prev) => [...prev, newStationMeta]);
+    setStationSensors((prev) => ({ ...prev, [id]: initialSensors }));
+    publishStationUpdate(id, initialSensors);
+
+    // focus newly added station on map
+    setFocusId(null);
+    setTimeout(() => setFocusId(id), 50);
+
+    setShowAddForm(false);
+    setShowAddModal(false);
+    setSearchError(null);
+  }
+
+  // Submit update to remote endpoint to update station GPS
+  async function updateStationGPS() {
+    const student = String((updateForm.student_number ?? "")).trim();
+    const lat = Number(updateForm.latitude);
+    const lon = Number(updateForm.longitude);
+
+    if (!student) {
+      setUpdateError("Student number (llnummer) is required");
+      return;
+    }
+    if (Number.isNaN(lat) || Number.isNaN(lon)) {
+      setUpdateError("Latitude and longitude must be numbers");
+      return;
+    }
+
+    setIsUpdating(true);
+    setUpdateError(null);
+    setUpdateSuccess(null);
+
+    const url = `http://145.24.237.211:8000/updateStation?llnummer=${encodeURIComponent(
+      student
+    )}&latitude=${encodeURIComponent(lat)}&longitude=${encodeURIComponent(lon)}`;
+
+    try {
+      const res = await fetch(url, { method: "POST" });
+      if (!res.ok) {
+        const text = await res.text().catch(() => "");
+        throw new Error(`HTTP ${res.status} ${res.statusText} ${text}`);
+      }
+
+      // If we have the station locally, update its coords in the UI
+      setStations((prev) =>
+        prev.map((s) => {
+          const sid = String(s.id ?? "");
+          const sstudent = String(s.student_number ?? "");
+          if (
+            sid === student ||
+            sstudent === student ||
+            sid.includes(student) ||
+            sstudent.includes(student)
+          ) {
+            return { ...s, lat, lon };
+          }
+          return s;
+        })
+      );
+
+      setUpdateSuccess("Station GPS updated successfully");
+      // close modal shortly after success
+      setTimeout(() => {
+        setShowUpdateModal(false);
+      }, 800);
+    } catch (err) {
+      console.error("UpdateStation failed:", err);
+      setUpdateError(err.message || String(err));
+    } finally {
+      setIsUpdating(false);
+    }
+  }
+
+  function handleSearch(qArg, locArg = null) {
+    const q = String((qArg ?? searchQuery ?? "")).trim();
+    const loc = locArg === null || typeof locArg === "undefined" ? null : Number(locArg);
+
+    if (!q) {
+      setSearchError("Enter something to search");
+      return;
+    }
+
+    const normalize = (v) => String(v ?? "").trim();
+
+    const matchExactStudent = (s) => normalize(s.student_number) === q;
+    const matchExactId = (s) => normalize(s.id) === q;
+    const matchPartialStudent = (s) => normalize(s.student_number).includes(q);
+    const matchPartialId = (s) => normalize(s.id).includes(q);
+
+    // Candidates: prefer stations matching the chosen location first (if provided)
+    let candidates = Array.isArray(stations) ? stations.slice() : [];
+    if (loc !== null) {
+      candidates = candidates.filter((s) => normalizeLocation(s.location) === Number(loc));
+    }
+
+    // Search order: exact student_number -> exact id -> partial student_number -> partial id
+    let found =
+      candidates.find(matchExactStudent) ||
+      candidates.find(matchExactId) ||
+      candidates.find(matchPartialStudent) ||
+      candidates.find(matchPartialId);
+
+    let relaxed = false;
+    // If not found within the chosen location, try across all stations as a fallback
+    if (!found && loc !== null) {
+      found =
+        stations.find(matchExactStudent) ||
+        stations.find(matchExactId) ||
+        stations.find(matchPartialStudent) ||
+        stations.find(matchPartialId);
+      if (found) relaxed = true;
+    }
+
+    if (!found) {
+      setSearchError(`No station found for '${q}'${loc !== null ? ` (location=${loc})` : ""}`);
+      return;
+    }
+
+    setFocusId(null);
+    setTimeout(() => setFocusId(found.id), 50);
+
+    // show a small hint when we had to relax the location filter; otherwise clear errors
+    if (relaxed) {
+      setSearchError(`No station with '${q}' found at the chosen location; focusing the closest match.`);
+    } else {
+      setSearchError(null);
+    }
+  }
+
+  // station-level sensors mapping (stationId -> sensors object)
+  const [stationSensors, setStationSensors] = useState({});
+
+  // 2. Callback to handle MQTT messages
+  // Example topic variants:
+  //  - homestations/<stationId>/<location>/<sensorType>  (preferred)
+  //  - HomestationDemo/homestations/<stationId>/<location>/<sensorType> (possible prefix)
+  function handleMqttMessage(topic, payload) {
+    console.log("MQTT raw:", topic, payload);
+
+    const parts = String(topic).split("/");
+    // Find the 'homestations' segment so we tolerate prefixed topics
+    const baseIdx = parts.findIndex((p) => p.toLowerCase() === "homestations");
+    if (baseIdx === -1 || parts.length < baseIdx + 4) {
+      console.warn("MQTT topic not recognized:", topic);
+      return;
+    }
+
+    const stationIdRaw = parts[baseIdx + 1];
+    const locationRaw = parts[baseIdx + 2];
+    // normalize sensor key so variants like "wind-direction" or "wind_direction" map to "winddirection"
+    const rawSensorType = String(parts[baseIdx + 3] || "").toLowerCase();
+    const sensorType = rawSensorType.replace(/[^a-z0-9]/g, "");
+
+    const payloadStr = String(payload).trim();
+
+    let value;
+    if (sensorType === "winddirection") {
+      // accept either numeric degrees or compass strings (e.g. "N", "NE")
+      const num = Number(payloadStr);
+      if (!isNaN(num)) {
+        value = num;
+      } else if (payloadStr.includes("/")) {
+        const pparts = payloadStr.split("/");
+        value = pparts[pparts.length - 1];
+      } else {
+        value = payloadStr;
+      }
+    } else if (sensorType === "rain") {
+      // Handle rain as boolean or numeric
+      const lowerPayload = payloadStr.toLowerCase();
+      if (lowerPayload === "true" || lowerPayload === "1") {
+        value = true;
+      } else if (lowerPayload === "false" || lowerPayload === "0") {
+        value = false;
+      } else {
+        // Try as numeric (mm of rain)
+        const num = Number(payloadStr);
+        if (!isNaN(num)) {
+          value = num;
+        } else {
+          console.warn("Invalid rain payload value:", payload);
+          return;
+        }
+      }
+    } else {
+      const num = Number(payloadStr);
+      if (!isNaN(num)) {
+        value = num;
+      } else {
+        const pparts = String(payload).split("/");
+        if (pparts.length >= 1) {
+          const maybeVal = Number(pparts[pparts.length - 1]);
+          if (!isNaN(maybeVal)) {
+            value = maybeVal;
+          } else {
+            console.warn("Invalid payload value:", payload);
+            return;
+          }
+        } else {
+          console.warn("Invalid payload value:", payload);
+          return;
+        }
+      }
+    }
+
+    const parsedStationId = String(stationIdRaw);
+    const locNum = Number(locationRaw);
+
+    console.log("Parsed MQTT:", { stationId: parsedStationId, location: locNum, sensorType, value });
+
+    // Find canonical station(s) from our stations list using the same flexible matching we had previously.
+    let matchedStations = stations.filter((station) => {
+      const sid = String(station.id ?? "");
+      const sstudent = String(station.student_number ?? "");
+      const matches =
+        sid === parsedStationId ||
+        sstudent === parsedStationId ||
+        sid.includes(parsedStationId) ||
+        sstudent.includes(parsedStationId);
+      return matches && Number(station.location) === locNum;
+    });
+
+    // If nothing matched with location, try without location as a fallback (mirrors previous behavior).
+    if (matchedStations.length === 0) {
+      matchedStations = stations.filter((station) => {
+        const sid = String(station.id ?? "");
+        const sstudent = String(station.student_number ?? "");
+        return (
+          sid === parsedStationId ||
+          sstudent === parsedStationId ||
+          sid.includes(parsedStationId) ||
+          sstudent.includes(parsedStationId)
+        );
+      });
+      if (matchedStations.length > 0) {
+        console.warn("MQTT matched station id but not location; applying update to fallback matches.");
+      }
+    }
+
+    if (matchedStations.length === 0) {
+      console.warn("No station in local list matches MQTT station id:", parsedStationId);
+      return;
+    }
+
+    const update = { [sensorType]: value };
+
+    // Update stationSensors for each matched canonical id and publish station updates.
+    setStationSensors((prev) => {
+      const next = { ...prev };
+      matchedStations.forEach((ms) => {
+        const key = String(ms.id);
+        const prevFor = next[key] || {};
+        next[key] = { ...prevFor, ...update };
+      });
+      return next;
+    });
+
+    matchedStations.forEach((ms) => publishStationUpdate(String(ms.id), update));
+  }
+
+  // // Periodically regenerate sensors and update tick so popups show live sensor values.
+  // // Adjust intervalMs (milliseconds) as desired.
+  // useEffect(() => {
+  //   const intervalMs = 1000; // update every 5 seconds
+  //   const id = setInterval(() => {
+  //     setStations((prev) => prev.map((s) => ({ ...s, sensors: generateSensors() })));
+  //     setTick(Date.now());
+  //   }, intervalMs);
+
+  //   return () => clearInterval(id);
+  // }, []);
+
+
+  // Publish an actuator command for a station
+  function publishActuator(station, value = 1) {
+    if (!mqttClient) {
+      console.warn("No MQTT client available to publish actuator command");
+      return;
+    }
+    // mqtt.js client exposes `.connected` boolean in browser builds
+    if (mqttClient.connected === false) {
+      console.warn("MQTT client not connected");
+      return;
+    }
+
+    const stationKey = String(station.student_number ?? station.id ?? station.name ?? "unknown");
+    const location = typeof station.location !== "undefined" ? station.location : 1;
+    const topic = `homestations/${stationKey}/${location}/motor`;
+    const payload = String(value);
+
+    mqttClient.publish(topic, payload, (err) => {
+      if (err) {
+        console.error("Failed to publish actuator command:", err);
+      } else {
+        console.log("Published actuator command:", topic, payload);
+      }
+    });
+  }
+
+  useEffect(() => {
+    // Fetch stations from backend on mount
+    async function fetchStations() {
+      try {
+        const data = await GetStations();
+        console.log("Fetched stations from backend:", data);
+        // Normalize backend station objects to the frontend shape expected by WeatherMap and WeatherCard.
+        // Backend may return fields like latitude/longitude or lat/lon and different name keys.
+        const sensorsMap = {};
+        const normalized = (Array.isArray(data) ? data : []).map((s) => {
+          const id = String(s.id ?? s.station_id ?? s.student_number ?? s.name ?? Math.random());
+          const student_number = String(s.student_number ?? s.name ?? s.id ?? `Station ${id}`);
+          const lat = Number(
+            s.lat ?? s.latitude ?? s.latitude_deg ?? s.latitudeDegrees ?? null
+          );
+          const lon = Number(
+            s.lon ??
+            s.longitude ??
+            s.longitude_deg ??
+            s.longitudeDegrees ??
+            null
+          );
+          const rawLoc = s.location ?? s.location_id ?? 1;
+          const location = normalizeLocation(rawLoc);
+          const sensors = s.sensors ?? s.latest_sensors ?? {};
+          sensorsMap[id] = sensors;
+          return {
+            id,
+            student_number,
+            name: student_number,
+            lat: Number.isFinite(lat) ? lat : NL_CENTER[0],
+            lon: Number.isFinite(lon) ? lon : NL_CENTER[1],
+            location,
+            // intentionally keep station metadata free of sensor values so map/popups don't re-render on sensor updates
+          };
+        });
+        setStations(normalized);
+        setStationSensors(sensorsMap);
+        // publish initial sensor values so any open popup or map subscriber can get them
+        Object.entries(sensorsMap).forEach(([sid, sensors]) => {
+          if (sensors && Object.keys(sensors).length > 0) {
+            publishStationUpdate(sid, sensors);
+          }
+        });
+      } catch (err) {
+        console.error("Error fetching stations:", err);
+      }
+    }
+    fetchStations();
+  }, []);
+
+  return (
+    <div className="app">
+      <div className="app-body">
+        <div className="stations-area">
+          <SearchBar
+            onSearch={(q, loc) => {
+              setSearchQuery(q);
+              handleSearch(q, loc);
+            }}
+          />
+          {/* show search errors directly under the search bar */}
+          {searchError && (
+            <div
+              className="form-error"
+              role="alert"
+              style={{ margin: "8px 0" }}
+            >
+              {searchError}
+            </div>
+          )}
+
+          <div className="homestation-table" aria-label="Stations list">
+            <section className="weather-list" aria-live="polite">
+              {stations.length === 0 ? (
+                <div className="no_stations">No stations found...</div>
+              ) : (
+                stations.map((s) => (
+                  <WeatherCard
+                    key={s.id}
+                    station={{ ...s, sensors: stationSensors[s.id] ?? {} }}
+                    onFocus={() => setFocusId(s.id)}
+                    tick={tick}
+                    onActuator={() => publishActuator(s, 1)}
+                  />
+                ))
+              )}
+            </section>
+
+            <div className="fab-group">
+              <button
+                type="button"
+                className="fab-button add-station-fab"
+                onClick={() => {
+                  setShowAddModal(true);
+                  setShowAddForm(false);
+                  setSearchError(null);
+                }}
+                aria-label="Add station"
+              >
+                + Add Station
+              </button>
+
+              <button
+                type="button"
+                className="fab-button"
+                onClick={() => {
+                  setShowUpdateModal(true);
+                  setUpdateError(null);
+                  setUpdateSuccess(null);
+                }}
+                aria-label="Update station GPS"
+              >
+                Update GPS
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div className="map-and-controls">
+          <div className="controls-area">
+            <Controls
+              showSearch={showSearch}
+              setShowSearch={setShowSearch}
+              showAddForm={showAddForm}
+              setShowAddForm={setShowAddForm}
+              showAddModal={showAddModal}
+              searchQuery={searchQuery}
+              setSearchQuery={setSearchQuery}
+              searchError={searchError}
+              setSearchError={setSearchError}
+              addForm={addForm}
+              setAddForm={setAddForm}
+              handleSearch={handleSearch}
+              addStation={addStation}
+            />
+          </div>
+
+          <main className="map-wrap">
+            <WeatherMap stations={stations} focusId={focusId} />
+          </main>
+        </div>
+      </div>
+
+      {showUpdateModal && (
+        <div
+          className="modal-overlay"
+          role="dialog"
+          aria-modal="true"
+          onClick={() => {
+            setShowUpdateModal(false);
+            setUpdateError(null);
+            setUpdateSuccess(null);
+          }}
+        >
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <h2>Update Station GPS</h2>
+
+            <div className="modal-form">
+              <div className="input-row">
+                <div className="input-group">
+                  <label htmlFor="update-llnummer" className="input-label">
+                    Student Number (llnummer)
+                  </label>
+                  <input
+                    id="update-llnummer"
+                    className="controls-input"
+                    type="text"
+                    placeholder="e.g. 1058796"
+                    value={updateForm.student_number}
+                    onChange={(e) =>
+                      setUpdateForm((f) => ({ ...f, student_number: e.target.value }))
+                    }
+                  />
+                </div>
+
+                <div className="input-group">
+                  <label htmlFor="update-lat" className="input-label">Latitude</label>
+                  <input
+                    id="update-lat"
+                    className="controls-input"
+                    type="number"
+                    step="any"
+                    placeholder="51.0"
+                    value={updateForm.latitude}
+                    onChange={(e) =>
+                      setUpdateForm((f) => ({ ...f, latitude: e.target.value }))
+                    }
+                  />
+                </div>
+
+                <div className="input-group">
+                  <label htmlFor="update-lon" className="input-label">Longitude</label>
+                  <input
+                    id="update-lon"
+                    className="controls-input"
+                    type="number"
+                    step="any"
+                    placeholder="4.0"
+                    value={updateForm.longitude}
+                    onChange={(e) =>
+                      setUpdateForm((f) => ({ ...f, longitude: e.target.value }))
+                    }
+                  />
+                </div>
+              </div>
+
+              {updateError && <div className="form-error" role="alert">{updateError}</div>}
+              {updateSuccess && <div className="form-success" role="status">{updateSuccess}</div>}
+
+              <div className="modal-actions">
+                <button
+                  type="button"
+                  className="controls__btn"
+                  onClick={() => {
+                    setShowUpdateModal(false);
+                    setUpdateError(null);
+                    setUpdateSuccess(null);
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  className="controls__btn controls__btn--primary"
+                  onClick={updateStationGPS}
+                  disabled={isUpdating}
+                >
+                  {isUpdating ? "Updating..." : "Update"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <Model
+        show={showAddModal}
+        setShow={setShowAddModal}
+        setShowAddForm={setShowAddForm}
+        addForm={addForm}
+        setAddForm={setAddForm}
+        addStation={addStation}
+        searchError={searchError}
+        setSearchError={setSearchError}
+      />
+      <MQTTModule onMessage={handleMqttMessage} onClient={setMqttClient} />
+    </div>
+  );
+}

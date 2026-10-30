@@ -1,0 +1,6 @@
+*.class
+/.vscode
+/.vs
+/src/nodejsfiles/node_modules
+/src/landserver/node_modules
+*.env

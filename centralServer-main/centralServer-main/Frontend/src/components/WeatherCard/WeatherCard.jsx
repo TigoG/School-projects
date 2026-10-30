@@ -1,0 +1,74 @@
+import React from "react";
+import "./WeatherCard.css";
+
+export default function WeatherCard({ station = {}, onFocus = () => {}, onActuator = () => {} }) {
+  const { id = "unknown", student_number = "Unknown", sensors = {} } = station;
+  const tempVal = sensors.temperature;
+  const tempNumber = typeof tempVal === "number" && tempVal !== -1 ? tempVal.toFixed(1) : "—";
+  const temp =
+    tempNumber !== "—"
+      ? `${tempNumber} °C`
+      : "—";
+
+  const getWeatherInfo = (temp) => {
+    if (typeof temp !== "number" || temp === -1) {
+      return { icon: "❓", description: "No data" };
+    }
+    if (temp >= 21) return { icon: "☀️", description: "Sunny" };
+    if (temp >= 16) return { icon: "⛅", description: "Partly cloudy" };
+    if (temp >= 10) return { icon: "☁️", description: "Cool" };
+    return { icon: "❄️", description: "Cold" };
+  };
+
+  const { icon, description } = getWeatherInfo(tempVal);
+
+
+
+  return (
+    <article className="weather-card" role="article" aria-labelledby={`wc-${id}-title`}>
+      <div className="weather-card__left">
+        <div className="weather-card__icon" aria-hidden="true">
+          {icon}
+        </div>
+      </div>
+
+      <div className="weather-card__body">
+        <h3 id={`wc-${id}-title`} className="weather-card__city">
+          {student_number}
+        </h3>
+        <div className="weather-card__date">
+          {new Date().toLocaleDateString()}
+        </div>
+        <div className="weather-card__desc">{description}</div>
+
+      </div>
+
+      <div className="weather-card__right">
+        <div className="weather-card__temp-number" style={{ marginBottom: 8, textAlign: 'center', fontWeight: 700, color: '#0f172a' }}>
+          {temp}
+        </div>
+        <div className="weather-card__buttons">
+          <button
+            type="button"
+            className="weather-card__btn"
+            onClick={(e) => {
+              e.stopPropagation();
+              if (typeof onActuator === "function") onActuator();
+            }}
+            aria-label={`Activate actuator for ${student_number}`}
+          >
+            Actuator
+          </button>
+          <button
+            type="button"
+            className="weather-card__btn"
+            onClick={onFocus}
+            aria-label={`Focus ${student_number} on map`}
+          >
+            Focus
+          </button>
+        </div>
+      </div>
+    </article>
+  );
+}

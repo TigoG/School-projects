@@ -1,0 +1,12 @@
+sql:
+  host: 'database'
+  port: 3306
+  database: 'scr'
+  username: 'scr'
+  password: 'u0u6YiSVp9T2jQ1YsQ24bPPj0XoPZ8ug'
+
+gpio:
+  port: 8090
+
+webserver:
+  port: 8080

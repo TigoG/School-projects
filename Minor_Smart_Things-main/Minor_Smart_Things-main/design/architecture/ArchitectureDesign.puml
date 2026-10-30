@@ -1,0 +1,75 @@
+@startuml Architecture Design
+title Weather Station — High-level Architecture
+skinparam componentStyle rectangle
+left to right direction
+
+package "Weather Station (Device)" as WS {
+  component "Main" as Main
+  component "Sensor Manager" as SensorManager
+  component "Comm Manager (MQTT)" as CommManager
+  component "Display Manager" as DisplayManager
+
+  queue "mqttQueue" as Q_mqtt
+  queue "displayQueue" as Q_display
+
+  node "Sensor Task" as SensorTask
+  node "Comm Task" as CommTask
+  node "Display Task" as DisplayTask
+
+  rectangle "Sensors & Peripherals" as Periph {
+    [DHT22: Temp & Humidity] as DHT
+    [BH1750: Light] as BH1750
+    [Hall Anemometer: Pulse] as Anem
+    [SSD1306 OLED Display] as SSD1306
+  }
+
+  artifact "Serial Console" as Serial
+}
+
+package "External Systems" {
+  cloud "MQTT Broker\n(Mosquitto / Cloud MQTT)" as Broker
+  node "Actuator ESP32 (peer)" as ActuatorESP
+  rectangle "MG90 Servo (MG90 9g)" as MG90
+}
+
+' Startup and instantiation
+Main --> SensorManager : instantiate & start
+Main --> CommManager : instantiate & start
+Main --> DisplayManager : instantiate & start
+
+' Tasks creation
+SensorManager --> SensorTask
+CommManager --> CommTask
+DisplayManager --> DisplayTask
+
+' Sensor data flow
+DHT --> SensorTask : measurements
+BH1750 --> SensorTask : measurements
+Anem --> SensorTask : pulse counts
+SensorTask --> Q_mqtt : publish payload
+SensorTask --> Q_display : update display
+
+' Consumers
+Q_display --> DisplayTask : consume
+DisplayTask --> SSD1306 : render
+DisplayTask --> Serial : logs
+
+Q_mqtt --> CommTask : consume
+CommTask --> Broker : publish telemetry (MQTT/TLS)
+CommTask --> Serial : logs
+
+Broker --> ActuatorESP : command / fan-out (MQTT)
+ActuatorESP --> MG90 : PWM signal (servo control)
+
+note right of SensorTask
+sensor_payload: temp, humidity, lux, wind_kmh, seq
+end note
+
+note right of Broker
+Both ESP devices connect to the same MQTT broker.
+Typical topics:
+- homestation/{student_id}/{location}/{sensorType}
+Use TLS and device auth (certs / tokens)
+end note
+
+@enduml

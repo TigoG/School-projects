@@ -1,0 +1,171 @@
+#VRML_SIM R2023b utf8
+
+EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2023a/projects/objects/factory/containers/protos/WoodenBox.proto"
+EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2023a/projects/objects/floors/protos/RectangleArena.proto"
+EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2023a/projects/objects/backgrounds/protos/TexturedBackground.proto"
+EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2023a/projects/objects/backgrounds/protos/TexturedBackgroundLight.proto"
+EXTERNPROTO "../protos/Unit.proto"
+
+WorldInfo {
+  basicTimeStep 100
+}
+Viewpoint {
+  orientation 0.4930503894452591 -0.4850510168688377 -0.7222373740692077 4.396001124301758
+  position 0.7962385913487519 -0.643818073188634 2.712561949542744
+}
+TexturedBackground {
+}
+TexturedBackgroundLight {
+}
+RectangleArena {
+  translation 0.5 0.5 0
+  floorSize 1.1 1.1
+  floorTileSize 0.2 0.2
+  wallHeight 0.06
+}
+Pose {
+  translation 0 0 0.001
+  children [
+    Shape {
+      appearance Appearance {
+        material Material {
+          diffuseColor 1 0 0
+        }
+      }
+      geometry Plane {
+        size 0.1 0.1
+      }
+    }
+  ]
+}
+Pose {
+  translation 1 0 0.001
+  children [
+    Shape {
+      appearance Appearance {
+        material Material {
+          diffuseColor 1 1 0
+        }
+      }
+      geometry Plane {
+        size 0.1 0.1
+      }
+    }
+  ]
+}
+Pose {
+  translation 1 1 0.001
+  children [
+    Shape {
+      appearance Appearance {
+        material Material {
+          diffuseColor 0 1 0
+        }
+      }
+      geometry Plane {
+        size 0.1 0.1
+      }
+    }
+  ]
+}
+Pose {
+  translation 0 1 0.001
+  children [
+    Shape {
+      appearance Appearance {
+        material Material {
+          diffuseColor 0 0 1
+        }
+      }
+      geometry Plane {
+        size 0.1 0.1
+      }
+    }
+  ]
+}
+WoodenBox {
+  translation 0.8 0.7 0.05
+  name "stelling0"
+  size 0.1 0.3 0.1
+}
+WoodenBox {
+  translation 0.5 0.2 0.05
+  name "stelling1"
+  size 0.7 0.1 0.1
+}
+WoodenBox {
+  translation 0.5 0.4 0.05
+  name "stelling2"
+  size 0.7 0.1 0.1
+}
+WoodenBox {
+  translation 0.2 0.7 0.05
+  name "stelling3"
+  size 0.1 0.3 0.1
+}
+WoodenBox {
+  translation 0.4 0.7 0.05
+  name "stelling4"
+  size 0.1 0.3 0.1
+}
+WoodenBox {
+  translation 0.6 0.7 0.05
+  name "stelling5"
+  size 0.1 0.3 0.1
+}
+Robot {
+  translation 0 0.5 0.05
+  children [
+    DistanceSensor {
+      name "ds0"
+    }
+    DistanceSensor {
+      rotation 0 0 1 1.5707996938995747
+      name "ds1"
+    }
+    DistanceSensor {
+      rotation 0 0 1 3.141592653589793
+      name "ds2"
+    }
+    DistanceSensor {
+      rotation 0 0 1 -1.570795613280012
+      name "ds3"
+    }
+    Shape {
+      appearance Appearance {
+        material Material {
+          diffuseColor 1 0 1
+        }
+      }
+      geometry DEF shape Cylinder {
+        height 0.1
+        radius 0.04
+      }
+    }
+  ]
+  name "indringer"
+  boundingObject USE shape
+  controller "intruder"
+  supervisor TRUE
+}
+Unit {
+  target 7 6
+}
+Unit {
+  name "unit1"
+  color 1 1 0
+  translation 1 0 0.05
+  target 2 8
+}
+Unit {
+  name "unit2"
+  color 0 1 0
+  translation 1 1 0.05
+  target 0 9
+}
+Unit {
+  name "unit3"
+  color 0 0 1
+  translation 0 1 0.05
+  target 7 5
+}

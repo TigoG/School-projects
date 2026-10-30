@@ -1,0 +1,73 @@
+#VRML_SIM R20233b utf8
+
+PROTO Unit [
+    field SFString name "unit0"
+    field SFColor color 1 0 0
+    field SFVec3f translation 0 0 0.05
+    field SFVec2f target 5 5
+    field SFBool supervisor TRUE
+]
+{
+    Robot {
+        translation IS translation
+        name IS name
+        supervisor IS supervisor
+        children [
+            SimpleLED {
+            ##right
+                name "led0"
+                color IS color
+                translation 0.03 0 0.05 
+            }
+            SimpleLED {
+            ##left
+                name "led1"
+                color IS color
+                translation -0.03 0 0.05
+            }
+            SimpleLED {
+            ##up
+                name "led2"
+                color IS color
+                translation 0 0.03 0.05
+            }
+            SimpleLED {
+            ## down
+                name "led3"
+                color IS color
+                translation 0 -0.03 0.05
+            }
+            DistanceSensor {
+                name "sensor0"
+                translation 0.03 0 0.05
+                rotation 0 0 1 1.57
+            }
+            DistanceSensor {
+                name "sensor1"
+                translation -0.03 0 0.05
+                rotation 0 0 1 -1.57
+            }
+            DistanceSensor {
+                name "sensor2"
+                translation 0 0.03 0.05
+                rotation 0 1 0 1.57
+            }
+            DistanceSensor {
+                name "sensor3"
+                translation 0 -0.03 0.05
+                rotation 0 1 0 -1.57
+            }
+            Shape {
+                appearance Appearance {
+                    material Material {
+                        diffuseColor IS color
+                    }
+                }
+                geometry Box {
+                    size 0.1 0.1 0.1
+                }
+            }
+        ]
+        controller "moving"
+    }
+}
